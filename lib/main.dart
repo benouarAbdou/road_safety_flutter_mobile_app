@@ -66,9 +66,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Start listening to position updates
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        distanceFilter: 8,
-        accuracy: LocationAccuracy.best,
+      locationSettings: AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 1,
+        forceLocationManager: true,
+        intervalDuration: const Duration(seconds: 1),
       ),
     ).listen((Position? position) {
       if (position != null) {
@@ -79,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _onSpeedChange(double newSpeed) {
     setState(() {
-      _speed = newSpeed < 3.5 ? 0.0 : newSpeed;
+      _speed = newSpeed;
     });
   }
 
@@ -101,7 +103,7 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
-              'Current Speed:',
+              'Current_Speed:',
               style: TextStyle(fontSize: 20),
             ),
             Text(
