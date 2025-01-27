@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,6 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Car Speed Tracker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -33,7 +35,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late StreamSubscription<Position> _positionStream;
+  late GoogleMapController _mapController;
   double _speed = 0.0;
+  LatLng _currentPosition = const LatLng(0, 0);
+  final Completer<GoogleMapController> _controller = Completer();
 
   @override
   void initState() {
@@ -70,18 +75,24 @@ class _MyHomePageState extends State<MyHomePage> {
         accuracy: LocationAccuracy.high,
         distanceFilter: 1,
         forceLocationManager: true,
-        intervalDuration: const Duration(seconds: 1),
+        intervalDuration: const Duration(seconds: 2),
       ),
     ).listen((Position? position) {
       if (position != null) {
-        _onSpeedChange((position.speed * 18) / 5); // Convert m/s to km/h
+        _onPositionChange(position);
       }
     });
   }
 
-  void _onSpeedChange(double newSpeed) {
+  void _onPositionChange(Position position) {
     setState(() {
-      _speed = newSpeed;
+      _currentPosition = LatLng(position.latitude, position.longitude);
+      _speed = (position.speed * 18) / 5; // Convert m/s to km/h
+
+      // Move the camera to the updated position
+      _mapController.animateCamera(
+        CameraUpdate.newLatLng(_currentPosition),
+      );
     });
   }
 
@@ -94,24 +105,49 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Current_Speed:',
-              style: TextStyle(fontSize: 20),
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _currentPosition,
+              zoom: 16,
             ),
-            Text(
-              '${_speed.toStringAsFixed(0)} km/h',
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            onMapCreated: (GoogleMapController controller) {
+              _controller.complete(controller);
+              _mapController = controller;
+            },
+          ),
+          Positioned(
+            top: 40,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Current Speed:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    '${_speed.toStringAsFixed(0)} km/h',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
