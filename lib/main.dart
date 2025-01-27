@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:get/get.dart';
+import 'package:my_pfe/controllers/FirebaseController.dart'; // Import GetX package
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // Initialize Firebase
   runApp(const MyApp());
 }
 
@@ -39,6 +44,8 @@ class _MyHomePageState extends State<MyHomePage> {
   double _speed = 0.0;
   LatLng _currentPosition = const LatLng(0, 0);
   final Completer<GoogleMapController> _controller = Completer();
+  final FirebaseController _firebaseController =
+      Get.put(FirebaseController()); // Initialize FirebaseController
 
   @override
   void initState() {
@@ -92,6 +99,13 @@ class _MyHomePageState extends State<MyHomePage> {
       // Move the camera to the updated position
       _mapController.animateCamera(
         CameraUpdate.newLatLng(_currentPosition),
+      );
+
+      // Update the Firebase Realtime Database
+      _firebaseController.updateUserPositionAndSpeed(
+        userId: 'user1', // Replace with your actual user ID logic
+        position: _currentPosition,
+        speed: _speed,
       );
     });
   }

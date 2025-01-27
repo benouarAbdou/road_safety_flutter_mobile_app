@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "54875392329",
+    "firebase_url": "https://mypfe-3f4dc-default-rtdb.firebaseio.com",
+    "project_id": "mypfe-3f4dc",
+    "storage_bucket": "mypfe-3f4dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54875392329:android:976709ea831f528fcaf298",
+        "android_client_info": {
+          "package_name": "com.example.carpfe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpcakTowYbSWzN823iVNWRyxGrVj4PGho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54875392329:android:2c87bef1aea390bccaf298",
+        "android_client_info": {
+          "package_name": "com.example.my_pfe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpcakTowYbSWzN823iVNWRyxGrVj4PGho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54875392329:android:123090d3b96f0980caf298",
+        "android_client_info": {
+          "package_name": "com.pfe.pfe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpcakTowYbSWzN823iVNWRyxGrVj4PGho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
