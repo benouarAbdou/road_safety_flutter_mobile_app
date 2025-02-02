@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:get/get.dart';
-import 'package:my_pfe/controllers/FirebaseController.dart'; // Import GetX package
+import 'package:my_pfe/controllers/FirebaseController.dart';
+import 'package:my_pfe/helpers/ToastHelper.dart'; // Import GetX package
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,8 +45,12 @@ class _MyHomePageState extends State<MyHomePage> {
   double _speed = 0.0;
   LatLng _currentPosition = const LatLng(0, 0);
   final Completer<GoogleMapController> _controller = Completer();
-  final FirebaseController _firebaseController =
-      Get.put(FirebaseController()); // Initialize FirebaseController
+  final FirebaseController _firebaseController = Get.put(FirebaseController());
+
+  // Marker for the user's current position
+  Marker? _userMarker;
+
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -57,10 +62,24 @@ class _MyHomePageState extends State<MyHomePage> {
     bool serviceEnabled;
     LocationPermission permission;
 
+    // Set a fallback location (e.g., city center)
+    setState(() {
+      _currentPosition =
+          const LatLng(36.737232, 3.086472); // Example: Algiers, Algeria
+      _isLoading = true;
+    });
+
     // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      return; // Location services are not enabled
+      ToastHelper.showErrorToast(
+        context,
+        'GPS is not enabled. Please activate GPS.',
+      );
+      setState(() {
+        _isLoading = false; // Stop loading if GPS is not enabled
+      });
+      return;
     }
 
     // Check location permissions
@@ -68,12 +87,27 @@ class _MyHomePageState extends State<MyHomePage> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        return; // Permissions are denied
+        ToastHelper.showErrorToast(
+          context,
+          'Location permissions are denied.',
+        );
+        setState(() {
+          _isLoading = false; // Stop loading if permissions are denied
+        });
+        return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      return; // Permissions are permanently denied
+      ToastHelper.showErrorToast(
+        context,
+        'Location permissions are permanently denied.',
+      );
+      setState(() {
+        _isLoading =
+            false; // Stop loading if permissions are permanently denied
+      });
+      return;
     }
 
     // Start listening to position updates
@@ -84,17 +118,47 @@ class _MyHomePageState extends State<MyHomePage> {
         forceLocationManager: true,
         intervalDuration: const Duration(seconds: 2),
       ),
-    ).listen((Position? position) {
-      if (position != null) {
-        _onPositionChange(position);
-      }
-    });
+    ).listen(
+      (Position? position) {
+        if (position != null) {
+          _onPositionChange(position);
+        }
+      },
+      onError: (error) {
+        ToastHelper.showErrorToast(
+          context,
+          'Error getting location: $error',
+        );
+        setState(() {
+          _isLoading = false; // Stop loading on error
+        });
+      },
+      onDone: () {
+        ToastHelper.showWarningToast(
+          context,
+          'GPS connection lost.',
+        );
+        setState(() {
+          _isLoading = false; // Stop loading if GPS connection is lost
+        });
+      },
+    );
   }
 
   void _onPositionChange(Position position) {
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
       _speed = (position.speed * 18) / 5; // Convert m/s to km/h
+
+      // Update the marker position
+      _userMarker = Marker(
+        markerId: const MarkerId('user_location'),
+        position: _currentPosition,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: const InfoWindow(
+          title: 'Your Location',
+        ),
+      );
 
       // Move the camera to the updated position
       _mapController.animateCamera(
@@ -107,6 +171,9 @@ class _MyHomePageState extends State<MyHomePage> {
         position: _currentPosition,
         speed: _speed,
       );
+
+      // Stop loading
+      _isLoading = false;
     });
   }
 
@@ -126,13 +193,21 @@ class _MyHomePageState extends State<MyHomePage> {
               target: _currentPosition,
               zoom: 16,
             ),
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            markers: _userMarker != null ? {_userMarker!} : {},
+            myLocationEnabled: false,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _controller.complete(controller);
               _mapController = controller;
             },
           ),
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(
+                color: Colors.deepPurple,
+              ),
+            ),
           Positioned(
             top: 40,
             left: 20,
