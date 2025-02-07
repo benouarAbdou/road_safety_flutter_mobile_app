@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:my_pfe/controllers/FirebaseController.dart';
 import 'package:my_pfe/helpers/ApiHelper.dart';
 import 'package:my_pfe/helpers/ToastHelper.dart';
+import 'package:my_pfe/navigationMenu.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Car Speed Tracker'),
+      home: const NavigationMenu(),
     );
   }
 }
@@ -105,7 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
     ).listen(
       (Position? position) async {
         if (position != null) {
-          await _onPositionChange(position);
+          _onPositionChange(position);
         }
       },
       onError: (error) {
@@ -115,25 +116,18 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future<void> _onPositionChange(Position position) async {
+  /*Future<*/ void /*>*/ _onPositionChange(Position position) /*async*/ {
     // Fetch speed limit first
-    final int? limit = await getSpeedLimit(
+    /*final int? limit = await getSpeedLimit(
       position.latitude,
       position.longitude,
-    );
+    );*/
 
     // Now update state synchronously
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
       _speed = (position.speed * 18) / 5;
-      speedLimit = limit ?? 0;
-
-      if (_speed > speedLimit) {
-        ToastHelper.showWarningToast(
-          context,
-          'Slow down! Speed limit: $speedLimit km/h',
-        );
-      }
+      //speedLimit = limit ?? 0;
 
       _userMarker = Marker(
         markerId: const MarkerId('user_location'),
