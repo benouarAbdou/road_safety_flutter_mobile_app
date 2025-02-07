@@ -8,6 +8,8 @@ import 'package:my_pfe/controllers/FirebaseController.dart';
 import 'package:my_pfe/helpers/ApiHelper.dart';
 import 'package:my_pfe/helpers/ToastHelper.dart';
 import 'package:my_pfe/navigationMenu.dart';
+import 'package:my_pfe/widgets/speedLimitWidget.dart';
+import 'package:my_pfe/widgets/speedWidget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -179,37 +181,16 @@ class _MyHomePageState extends State<MyHomePage> {
             const Center(
                 child: CircularProgressIndicator(color: Colors.deepPurple)),
           Positioned(
-            top: 40,
+            bottom: 20,
             left: 20,
             right: 20,
             child: Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Current Speed:',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    '${_speed.toStringAsFixed(0)} km/h',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
-                  Text(
-                    'Limit: $speedLimit km/h',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
+                  SpeedCircle(width: 100, speed: _speed),
+                  SpeedLimitCircle(width: 100, speedLimit: speedLimit),
                 ],
               ),
             ),
