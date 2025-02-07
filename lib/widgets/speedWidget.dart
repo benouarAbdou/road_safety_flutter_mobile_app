@@ -25,7 +25,7 @@ class _SpeedCircleState extends State<SpeedCircle> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.speed.toString(),
+              widget.speed.toStringAsFixed(1).toString(),
               style: TextStyle(
                 fontSize: widget.width * 0.3,
                 fontWeight: FontWeight.bold,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -6,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:get/get.dart';
 import 'package:my_pfe/controllers/FirebaseController.dart';
 import 'package:my_pfe/helpers/ApiHelper.dart';
+import 'package:my_pfe/helpers/FunctionsHelper.dart';
 import 'package:my_pfe/helpers/ToastHelper.dart';
 import 'package:my_pfe/navigationMenu.dart';
 import 'package:my_pfe/widgets/speedLimitWidget.dart';
@@ -53,6 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final FirebaseController _firebaseController = Get.put(FirebaseController());
   Marker? _userMarker;
   bool _isLoading = true;
+  late Uint8List markerIcon;
 
   @override
   void initState() {
@@ -64,6 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
     bool serviceEnabled;
     LocationPermission permission;
 
+    markerIcon = await getBytesFromAsset('assets/marker.png', 100);
     setState(() {
       _currentPosition = const LatLng(36.737232, 3.086472);
       _isLoading = true;
@@ -134,7 +138,8 @@ class _MyHomePageState extends State<MyHomePage> {
       _userMarker = Marker(
         markerId: const MarkerId('user_location'),
         position: _currentPosition,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        icon: BitmapDescriptor.fromBytes(
+            markerIcon), // Use the custom marker icon
         infoWindow: const InfoWindow(title: 'Your Location'),
       );
 
@@ -189,8 +194,8 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  SpeedCircle(width: 100, speed: _speed),
-                  SpeedLimitCircle(width: 100, speedLimit: speedLimit),
+                  SpeedCircle(width: 75, speed: _speed),
+                  SpeedLimitCircle(width: 75, speedLimit: speedLimit),
                 ],
               ),
             ),
