@@ -5,11 +5,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:get/get.dart';
 import 'package:my_pfe/controllers/FirebaseController.dart';
-import 'package:my_pfe/helpers/ToastHelper.dart'; // Import GetX package
+import 'package:my_pfe/helpers/ApiHelper.dart';
+import 'package:my_pfe/helpers/ToastHelper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // Initialize Firebase
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -43,13 +44,11 @@ class _MyHomePageState extends State<MyHomePage> {
   late StreamSubscription<Position> _positionStream;
   late GoogleMapController _mapController;
   double _speed = 0.0;
+  late int speedLimit = 0;
   LatLng _currentPosition = const LatLng(0, 0);
   final Completer<GoogleMapController> _controller = Completer();
   final FirebaseController _firebaseController = Get.put(FirebaseController());
-
-  // Marker for the user's current position
   Marker? _userMarker;
-
   bool _isLoading = true;
 
   @override
@@ -62,38 +61,27 @@ class _MyHomePageState extends State<MyHomePage> {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Set a fallback location (e.g., city center)
     setState(() {
-      _currentPosition =
-          const LatLng(36.737232, 3.086472); // Example: Algiers, Algeria
+      _currentPosition = const LatLng(36.737232, 3.086472);
       _isLoading = true;
     });
 
-    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       ToastHelper.showErrorToast(
         context,
         'GPS is not enabled. Please activate GPS.',
       );
-      setState(() {
-        _isLoading = false; // Stop loading if GPS is not enabled
-      });
+      setState(() => _isLoading = false);
       return;
     }
 
-    // Check location permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        ToastHelper.showErrorToast(
-          context,
-          'Location permissions are denied.',
-        );
-        setState(() {
-          _isLoading = false; // Stop loading if permissions are denied
-        });
+        ToastHelper.showErrorToast(context, 'Location permissions are denied.');
+        setState(() => _isLoading = false);
         return;
       }
     }
@@ -103,14 +91,10 @@ class _MyHomePageState extends State<MyHomePage> {
         context,
         'Location permissions are permanently denied.',
       );
-      setState(() {
-        _isLoading =
-            false; // Stop loading if permissions are permanently denied
-      });
+      setState(() => _isLoading = false);
       return;
     }
 
-    // Start listening to position updates
     _positionStream = Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.high,
@@ -119,60 +103,55 @@ class _MyHomePageState extends State<MyHomePage> {
         intervalDuration: const Duration(seconds: 2),
       ),
     ).listen(
-      (Position? position) {
+      (Position? position) async {
         if (position != null) {
-          _onPositionChange(position);
+          await _onPositionChange(position);
         }
       },
       onError: (error) {
-        ToastHelper.showErrorToast(
-          context,
-          'Error getting location: $error',
-        );
-        setState(() {
-          _isLoading = false; // Stop loading on error
-        });
-      },
-      onDone: () {
-        ToastHelper.showWarningToast(
-          context,
-          'GPS connection lost.',
-        );
-        setState(() {
-          _isLoading = false; // Stop loading if GPS connection is lost
-        });
+        ToastHelper.showErrorToast(context, 'Error getting location: $error');
+        setState(() => _isLoading = false);
       },
     );
   }
 
-  void _onPositionChange(Position position) {
+  Future<void> _onPositionChange(Position position) async {
+    // Fetch speed limit first
+    final int? limit = await getSpeedLimit(
+      position.latitude,
+      position.longitude,
+    );
+
+    // Now update state synchronously
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
-      _speed = (position.speed * 18) / 5; // Convert m/s to km/h
+      _speed = (position.speed * 18) / 5;
+      speedLimit = limit ?? 0;
 
-      // Update the marker position
+      if (_speed > speedLimit) {
+        ToastHelper.showWarningToast(
+          context,
+          'Slow down! Speed limit: $speedLimit km/h',
+        );
+      }
+
       _userMarker = Marker(
         markerId: const MarkerId('user_location'),
         position: _currentPosition,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: const InfoWindow(
-          title: 'Your Location',
-        ),
+        infoWindow: const InfoWindow(title: 'Your Location'),
       );
 
-      // Move the camera to the updated position
       _mapController.animateCamera(
         CameraUpdate.newLatLng(_currentPosition),
       );
 
-      // Update the Firebase Realtime Database
       _firebaseController.updateUserPositionAndSpeed(
-        userId: 'user1', // Replace with your actual user ID logic
+        userId: 'user1',
         position: _currentPosition,
         speed: _speed,
       );
 
-      // Stop loading
       _isLoading = false;
     });
   }
@@ -197,17 +176,14 @@ class _MyHomePageState extends State<MyHomePage> {
             myLocationEnabled: false,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
-            onMapCreated: (GoogleMapController controller) {
+            onMapCreated: (controller) {
               _controller.complete(controller);
               _mapController = controller;
             },
           ),
           if (_isLoading)
             const Center(
-              child: CircularProgressIndicator(
-                color: Colors.deepPurple,
-              ),
-            ),
+                child: CircularProgressIndicator(color: Colors.deepPurple)),
           Positioned(
             top: 40,
             left: 20,
@@ -226,6 +202,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   Text(
                     '${_speed.toStringAsFixed(0)} km/h',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                  Text(
+                    'Limit: $speedLimit km/h',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
