@@ -122,18 +122,32 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  /*Future<*/ void /*>*/ _onPositionChange(Position position) /*async*/ {
+  Future<void> _onPositionChange(Position position) async {
     // Fetch speed limit first
-    /*final int? limit = await getSpeedLimit(
+    final int? limit = await getSpeedLimit(
       position.latitude,
       position.longitude,
-    );*/
+    );
 
     // Now update state synchronously
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
       _speed = (position.speed * 18) / 5;
-      //speedLimit = limit ?? 0;
+      _speed = _speed < 5 ? 0 : _speed;
+      speedLimit = limit ?? 0;
+
+      if (_speed > speedLimit && speedLimit != 0) {
+        ToastHelper.showWarningToast(
+          context,
+          'Slow down! Speed limit: $speedLimit km/h',
+        );
+        _firebaseController.addEvent(
+          driverId: 'user1', // Replace with actual user ID
+          position: '${position.latitude},${position.longitude}',
+          driverSpeed: _speed,
+          roadSpeedLimit: speedLimit.toDouble(),
+        );
+      }
 
       _userMarker = Marker(
         markerId: const MarkerId('user_location'),
