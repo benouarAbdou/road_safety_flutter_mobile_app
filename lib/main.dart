@@ -76,9 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       ToastHelper.showErrorToast(
-        context,
-        'GPS is not enabled. Please activate GPS.',
-      );
+          context, 'GPS is not enabled. Please activate GPS.');
       setState(() => _isLoading = false);
       return;
     }
@@ -95,13 +93,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
     if (permission == LocationPermission.deniedForever) {
       ToastHelper.showErrorToast(
-        context,
-        'Location permissions are permanently denied.',
-      );
+          context, 'Location permissions are permanently denied.');
       setState(() => _isLoading = false);
       return;
     }
 
+    // Get initial position with a timeout
+    try {
+      Position initialPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('Failed to get location within 10 seconds');
+      });
+      await _onPositionChange(initialPosition); // Update UI immediately
+    } catch (e) {
+      ToastHelper.showErrorToast(context, 'Error getting initial position: $e');
+      setState(() => _isLoading = false);
+    }
+
+    // Start stream for subsequent updates
     _positionStream = Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.high,
@@ -112,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
     ).listen(
       (Position? position) async {
         if (position != null) {
-          _onPositionChange(position);
+          await _onPositionChange(position);
         }
       },
       onError: (error) {
