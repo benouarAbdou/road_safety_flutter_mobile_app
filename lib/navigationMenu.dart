@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
-import 'package:my_pfe/main.dart';
+import 'package:my_pfe/pages/HomePage.dart';
 
 class NavigationMenu extends StatelessWidget {
-  const NavigationMenu({super.key});
+  final String userId; // Add userId parameter
+
+  const NavigationMenu({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(NavigationController());
+    final controller =
+        Get.put(NavigationController(userId: userId)); // Pass userId
     return Scaffold(
       bottomNavigationBar: Obx(
         () => NavigationBar(
@@ -34,12 +37,15 @@ class NavigationMenu extends StatelessWidget {
 }
 
 class NavigationController extends GetxController {
+  final String userId; // Store userId
+  NavigationController({required this.userId});
+
   static NavigationController get instance => Get.find();
   final Rx<int> selectedIndex = 0.obs;
 
-  final screens = [
-    const MyHomePage(title: "Car Speed Tracker"),
-    const MyHomePage(title: "Car Speed Tracker"),
-    const MyHomePage(title: "Car Speed Tracker"),
+  late final List<Widget> screens = [
+    MyHomePage(title: "Car Speed Tracker", userId: userId), // Pass userId
+    const Center(child: Text("Profile")),
+    const Center(child: Text("Settings")),
   ];
 }
