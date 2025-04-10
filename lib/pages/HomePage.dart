@@ -23,7 +23,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late StreamSubscription<Position> _positionStream;
+  StreamSubscription<Position>?
+      _positionStream; // Changed from late to nullable
   late GoogleMapController _mapController;
   double _speed = 0.0;
   late int speedLimit = 0;
@@ -79,7 +80,7 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       Position initialPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-      ).timeout(const Duration(seconds: 10), onTimeout: () {
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
         throw TimeoutException('Failed to get location within 10 seconds');
       });
       await _onPositionChange(initialPosition); // Update UI immediately
@@ -131,7 +132,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _firebaseController.getDriverDocId(widget.userId).then((driverDocId) {
           if (driverDocId != null) {
             _firebaseController.addEvent(
-              driverId: driverDocId, // Use driver document ID
+              driverId: driverDocId,
               position: '${position.latitude},${position.longitude}',
               driverSpeed: _speed,
               roadSpeedLimit: speedLimit.toDouble(),
@@ -143,8 +144,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _userMarker = Marker(
         markerId: const MarkerId('user_location'),
         position: _currentPosition,
-        icon: BitmapDescriptor.fromBytes(
-            markerIcon), // Use the custom marker icon
+        icon: BitmapDescriptor.fromBytes(markerIcon),
         infoWindow: const InfoWindow(title: 'Your Location'),
       );
 
@@ -164,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    _positionStream.cancel();
+    _positionStream?.cancel(); // Use null-safe operator
     super.dispose();
   }
 

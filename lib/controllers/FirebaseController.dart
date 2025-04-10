@@ -45,7 +45,7 @@ class FirebaseController extends GetxController {
     try {
       final eventDateTime = DateTime.now();
       final eventData = {
-        'driverDocId': driverId, // Use document ID instead of authId
+        'driverId': driverId, // Use document ID instead of authId
         'position': position,
         'driverSpeed': driverSpeed,
         'roadSpeedLimit': roadSpeedLimit,

@@ -1,0 +1,2 @@
+C:/FlutterDev/apps/my_pfe/android/app/.cxx/RelWithDebInfo/6221q5f6/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/FlutterDev/apps/my_pfe/android/app/.cxx/RelWithDebInfo/6221q5f6/armeabi-v7a/CMakeFiles/rebuild_cache.dir
