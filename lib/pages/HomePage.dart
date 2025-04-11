@@ -11,7 +11,6 @@ import 'package:my_pfe/helpers/ToastHelper.dart';
 import 'package:my_pfe/helpers/functionsHelper.dart';
 import 'package:my_pfe/widgets/speedLimitWidget.dart';
 import 'package:my_pfe/widgets/speedWidget.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.userId});
@@ -34,6 +33,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Marker? _userMarker;
   bool _isLoading = true;
   late Uint8List markerIcon;
+  DateTime? _lastPositionUpdateTime; // ⏱️ Add cooldown timer
 
   @override
   void initState() {
@@ -152,11 +152,16 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
       if (_firebaseController.isDriving.value) {
-        _firebaseController.updateUserPositionAndSpeed(
-          userId: widget.userId,
-          position: _currentPosition,
-          speed: _speed,
-        );
+        final now = DateTime.now();
+        if (_lastPositionUpdateTime == null ||
+            now.difference(_lastPositionUpdateTime!).inMinutes >= 5) {
+          _firebaseController.updateUserPositionAndSpeed(
+            userId: widget.userId,
+            position: _currentPosition,
+            speed: _speed,
+          );
+          _lastPositionUpdateTime = now;
+        }
       }
 
       _isLoading = false;
