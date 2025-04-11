@@ -11,20 +11,20 @@ import 'package:my_pfe/helpers/ToastHelper.dart';
 import 'package:my_pfe/helpers/functionsHelper.dart';
 import 'package:my_pfe/widgets/speedLimitWidget.dart';
 import 'package:my_pfe/widgets/speedWidget.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.userId});
 
   final String title;
-  final String userId; // Add userId parameter
+  final String userId;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  StreamSubscription<Position>?
-      _positionStream; // Changed from late to nullable
+  StreamSubscription<Position>? _positionStream;
   late GoogleMapController _mapController;
   double _speed = 0.0;
   late int speedLimit = 0;
@@ -39,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _startTracking();
+    _firebaseController.fetchIsDriving(widget.userId);
   }
 
   void _startTracking() async {
@@ -76,20 +77,18 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
-    // Get initial position with a timeout
     try {
       Position initialPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       ).timeout(const Duration(seconds: 30), onTimeout: () {
         throw TimeoutException('Failed to get location within 10 seconds');
       });
-      await _onPositionChange(initialPosition); // Update UI immediately
+      await _onPositionChange(initialPosition);
     } catch (e) {
       ToastHelper.showErrorToast(context, 'Error getting initial position: $e');
       setState(() => _isLoading = false);
     }
 
-    // Start stream for subsequent updates
     _positionStream = Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.high,
@@ -111,20 +110,20 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _onPositionChange(Position position) async {
-    // Fetch speed limit first
-    final int? limit = await getSpeedLimit(
-      position.latitude,
-      position.longitude,
-    );
+    int? limit;
+    if (_firebaseController.isDriving.value) {
+      limit = await getSpeedLimit(position.latitude, position.longitude);
+    }
 
-    // Now update state synchronously
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
       _speed = (position.speed * 18) / 5;
       _speed = _speed < 5 ? 0 : _speed;
       speedLimit = limit ?? 0;
 
-      if (_speed > speedLimit && speedLimit != 0) {
+      if (_firebaseController.isDriving.value &&
+          _speed > speedLimit &&
+          speedLimit != 0) {
         ToastHelper.showWarningToast(
           context,
           'Slow down! Speed limit: $speedLimit km/h',
@@ -152,11 +151,13 @@ class _MyHomePageState extends State<MyHomePage> {
         CameraUpdate.newLatLng(_currentPosition),
       );
 
-      _firebaseController.updateUserPositionAndSpeed(
-        userId: widget.userId,
-        position: _currentPosition,
-        speed: _speed,
-      );
+      if (_firebaseController.isDriving.value) {
+        _firebaseController.updateUserPositionAndSpeed(
+          userId: widget.userId,
+          position: _currentPosition,
+          speed: _speed,
+        );
+      }
 
       _isLoading = false;
     });
@@ -164,7 +165,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    _positionStream?.cancel(); // Use null-safe operator
+    _positionStream?.cancel();
     super.dispose();
   }
 
@@ -204,6 +205,37 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
             ),
+          ),
+          Positioned(
+            bottom: 30,
+            left: MediaQuery.of(context).size.width / 2 - 37.5,
+            child: Obx(() => Container(
+                  width: 75,
+                  height: 75,
+                  decoration: BoxDecoration(
+                    color: !_firebaseController.isLoadingIsDriving.value
+                        ? _firebaseController.isDriving.value
+                            ? Colors.red
+                            : Colors.green
+                        : Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      _firebaseController.isLoadingIsDriving.value
+                          ? Icons.circle_outlined
+                          : _firebaseController.isDriving.value
+                              ? Icons.stop
+                              : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                    onPressed: !_firebaseController.isLoadingIsDriving.value
+                        ? () =>
+                            _firebaseController.toggleIsDriving(widget.userId)
+                        : null,
+                  ),
+                )),
           ),
         ],
       ),
