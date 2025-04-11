@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:my_pfe/navigationMenu.dart';
+import 'package:my_pfe/pages/LoginPage.dart';
 
 class FirebaseAuthController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -52,5 +53,7 @@ class FirebaseAuthController extends GetxController {
 
   Future<void> logout() async {
     await _auth.signOut();
+
+    Get.offAll(() => LoginPage());
   }
 }

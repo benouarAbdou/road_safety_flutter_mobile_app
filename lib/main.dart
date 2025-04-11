@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:my_pfe/pages/LoginPage.dart';
 import 'package:my_pfe/navigationMenu.dart'; // Import NavigationMenu
 import 'package:my_pfe/theme/theme.dart';
@@ -16,7 +17,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Car Speed Tracker',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
