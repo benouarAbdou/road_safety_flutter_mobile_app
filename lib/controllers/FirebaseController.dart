@@ -69,6 +69,7 @@ class FirebaseController extends GetxController {
     required String position,
     required double driverSpeed,
     required double roadSpeedLimit,
+    required int duration, // Add duration parameter
   }) async {
     try {
       final eventDateTime = DateTime.now();
@@ -78,10 +79,12 @@ class FirebaseController extends GetxController {
         'driverSpeed': driverSpeed,
         'roadSpeedLimit': roadSpeedLimit,
         'eventDateTime': eventDateTime.toIso8601String(),
+        'duration': duration, // Include duration in event data
       };
 
       await _firestore.collection('events').add(eventData);
-      debugPrint('Event added successfully for driverDocId: $driverId');
+      debugPrint(
+          'Event added successfully for driverDocId: $driverId with duration: $duration seconds');
     } catch (e) {
       debugPrint('Error adding event: $e');
     }

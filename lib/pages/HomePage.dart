@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:my_pfe/controllers/FirebaseController.dart';
+import 'package:my_pfe/database/db.dart';
 import 'package:my_pfe/helpers/ApiHelper.dart';
 import 'package:my_pfe/helpers/ToastHelper.dart';
 import 'package:my_pfe/helpers/functionsHelper.dart';
@@ -35,7 +36,11 @@ class _MyHomePageState extends State<MyHomePage> {
   Marker? _userMarker;
   bool _isLoading = true;
   late Uint8List markerIcon;
-  DateTime? _lastPositionUpdateTime; // ⏱️ Add cooldown timer
+  DateTime? _lastPositionUpdateTime;
+  final SqlDb _sqlDb = SqlDb(); // Initialize SqlDb instance
+
+  bool _isSpeeding = false; // Track if driver is currently speeding
+  DateTime? _speedingStartTime; // Track when speeding started
 
   @override
   void initState() {
@@ -126,21 +131,52 @@ class _MyHomePageState extends State<MyHomePage> {
       if (_firebaseController.isDriving.value &&
           _speed > speedLimit &&
           speedLimit != 0) {
-        ToastHelper.showWarningToast(
-          context,
-          'Slow down! Speed limit: $speedLimit km/h',
-        );
-        audioPlayer.play(AssetSource('sounds/alert.mp3'));
-        _firebaseController.getDriverDocId(widget.userId).then((driverDocId) {
-          if (driverDocId != null) {
-            _firebaseController.addEvent(
-              driverId: driverDocId,
-              position: '${position.latitude},${position.longitude}',
-              driverSpeed: _speed,
-              roadSpeedLimit: speedLimit.toDouble(),
-            );
-          }
-        });
+        if (!_isSpeeding) {
+          // Start of a new speeding event
+          _isSpeeding = true;
+          _speedingStartTime = DateTime.now();
+          ToastHelper.showWarningToast(
+            context,
+            'Slow down! Speed limit: $speedLimit km/h',
+          );
+          audioPlayer.play(AssetSource('sounds/alert.mp3'));
+        }
+      } else if (_isSpeeding) {
+        // End of speeding event (driver slowed down or conditions no longer met)
+        _isSpeeding = false;
+        if (_speedingStartTime != null) {
+          final duration =
+              DateTime.now().difference(_speedingStartTime!).inSeconds;
+          _firebaseController.getDriverDocId(widget.userId).then((driverDocId) {
+            if (driverDocId != null) {
+              // Store speeding event in Firestore
+              _firebaseController.addEvent(
+                driverId: driverDocId,
+                position: '${position.latitude},${position.longitude}',
+                driverSpeed: _speed,
+                roadSpeedLimit: speedLimit.toDouble(),
+                duration: duration,
+              );
+              // Store speeding event in local SQLite database
+              _sqlDb.insertData('''
+                INSERT INTO speeding_event (driverId, position, driverSpeed, roadSpeedLimit, eventDateTime, duration)
+                VALUES (
+                  '$driverDocId',
+                  '${position.latitude},${position.longitude}',
+                  $_speed,
+                  ${speedLimit.toDouble()},
+                  '${DateTime.now().toIso8601String()}',
+                  $duration
+                )
+              ''').then((value) {
+                debugPrint('Speeding event stored locally with ID: $value');
+              }).catchError((error) {
+                debugPrint('Error storing speeding event locally: $error');
+              });
+            }
+          });
+        }
+        _speedingStartTime = null;
       }
 
       _userMarker = Marker(
