@@ -11,6 +11,7 @@ import 'package:my_pfe/helpers/ToastHelper.dart';
 import 'package:my_pfe/helpers/functionsHelper.dart';
 import 'package:my_pfe/widgets/speedLimitWidget.dart';
 import 'package:my_pfe/widgets/speedWidget.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.userId});
@@ -23,6 +24,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool simulate = false; // ⛔ Change à false pour désactiver
   StreamSubscription<Position>? _positionStream;
   late GoogleMapController _mapController;
   double _speed = 0.0;
@@ -30,6 +32,8 @@ class _MyHomePageState extends State<MyHomePage> {
   LatLng _currentPosition = const LatLng(0, 0);
   final Completer<GoogleMapController> _controller = Completer();
   final FirebaseController _firebaseController = Get.put(FirebaseController());
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   Marker? _userMarker;
   bool _isLoading = true;
   late Uint8List markerIcon;
@@ -40,6 +44,13 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _startTracking();
     _firebaseController.fetchIsDriving(widget.userId);
+    // 🔧 Simulation forcée pour les tests (à commenter après test)
+    //_firebaseController.isDriving.value = true;
+  }
+
+  Future<void> _playAlertSound() async {
+    print("🔊 Tentative de jouer le son...");
+    await _audioPlayer.play(AssetSource('sounds/alert.mp3'));
   }
 
   void _startTracking() async {
@@ -113,32 +124,44 @@ class _MyHomePageState extends State<MyHomePage> {
     int? limit;
     if (_firebaseController.isDriving.value) {
       limit = await getSpeedLimit(position.latitude, position.longitude);
+
+    }
+    // ✅ Mode simulation activable
+    if (simulate) {
+      _speed = 85; // vitesse simulée
+      speedLimit = 30; // limite simulée
     }
 
+    if (_firebaseController.isDriving.value &&
+        _speed > speedLimit &&
+        speedLimit != 0) {
+      await _playAlertSound(); // 🔊 jouer le son
+      ToastHelper.showWarningToast(
+        context,
+        'Slow down! Speed limit: $speedLimit km/h',
+      );
+
+      _firebaseController.getDriverDocId(widget.userId).then((driverDocId) {
+        if (driverDocId != null) {
+          _firebaseController.addEvent(
+            driverId: driverDocId,
+            position: '${position.latitude},${position.longitude}',
+            driverSpeed: _speed,
+            roadSpeedLimit: speedLimit.toDouble(),
+          );
+        }
+      });
+    }
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
       _speed = (position.speed * 18) / 5;
       _speed = _speed < 5 ? 0 : _speed;
       speedLimit = limit ?? 0;
 
-      if (_firebaseController.isDriving.value &&
-          _speed > speedLimit &&
-          speedLimit != 0) {
-        ToastHelper.showWarningToast(
-          context,
-          'Slow down! Speed limit: $speedLimit km/h',
-        );
-        _firebaseController.getDriverDocId(widget.userId).then((driverDocId) {
-          if (driverDocId != null) {
-            _firebaseController.addEvent(
-              driverId: driverDocId,
-              position: '${position.latitude},${position.longitude}',
-              driverSpeed: _speed,
-              roadSpeedLimit: speedLimit.toDouble(),
-            );
-          }
-        });
-      }
+      // ✅ Remplacer les valeurs par simulation si activé
+
+
+
 
       _userMarker = Marker(
         markerId: const MarkerId('user_location'),

@@ -49,6 +49,7 @@ dependencies:
   http: ^0.13.5
   cloud_firestore: ^5.6.4
   firebase_auth: ^5.5.1
+  audioplayers: ^6.4.0
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +76,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/marker.png
+    - assets/sounds/alert.mp3
 
   fonts:
     - family: Poppins
