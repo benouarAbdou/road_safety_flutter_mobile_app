@@ -20,6 +20,8 @@ class SqlDb {
         onCreate: _onCreate,
         version: 1, // Increment version due to schema change
         onUpgrade: _onUpgrade,
+        readOnly: false, // Explicitly set to false
+
         onOpen: _onOpen);
     return mydb;
   }
@@ -61,7 +63,6 @@ CREATE TABLE "speeding_event" (
 )
 ''');
 
-    print("notes and speeding_event tables created");
     print("onCreate =====================================");
   }
 
