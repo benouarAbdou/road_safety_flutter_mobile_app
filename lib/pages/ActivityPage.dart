@@ -24,7 +24,9 @@ class ActivityPage extends StatelessWidget {
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: isStartDate
+          ? controller.startDate ?? DateTime.now()
+          : controller.endDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
@@ -37,68 +39,86 @@ class ActivityPage extends StatelessWidget {
     }
   }
 
+  Widget _buildDateChip(
+      DateTime? date, VoidCallback onTap, VoidCallback onClear, String label) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Chip(
+        label: Text(date != null ? DateFormat('MMM d').format(date) : label),
+        deleteIcon: date != null ? const Icon(Icons.close, size: 18) : null,
+        onDeleted: date != null ? onClear : null,
+        backgroundColor: date != null
+            ? Theme.of(Get.context!).colorScheme.primary.withOpacity(0.1)
+            : null,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: date != null
+                ? Theme.of(Get.context!).colorScheme.primary
+                : Colors.grey.shade300,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Speeding Events')),
+      appBar: AppBar(
+        title: const Text('Speeding Events'),
+      ),
       body: Obx(() {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Button Wrap
+            // Date Filter Section
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Wrap(
-                spacing: 8.0, // Horizontal spacing between buttons
-                runSpacing: 8.0, // Vertical spacing between lines
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ElevatedButton(
-                    onPressed: () => _selectDate(context, true),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                    ),
-                    child: Text(controller.startDate != null
-                        ? DateFormat('yyyy-MM-dd').format(controller.startDate!)
-                        : 'Start Date'),
+                  const Text(
+                    'Filter by date range',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                  ElevatedButton(
-                    onPressed: () => _selectDate(context, false),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                    ),
-                    child: Text(controller.endDate != null
-                        ? DateFormat('yyyy-MM-dd').format(controller.endDate!)
-                        : 'End Date'),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildDateChip(
+                        controller.startDate,
+                        () => _selectDate(context, true),
+                        () => controller.setStartDate(null),
+                        'Start Date',
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('to'),
+                      ),
+                      _buildDateChip(
+                        controller.endDate,
+                        () => _selectDate(context, false),
+                        () => controller.setEndDate(null),
+                        'End Date',
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: () => controller.clearFilters(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                    ),
-                    child: const Text('Clear Filters'),
-                  ),
-                  /*ElevatedButton(
-                    onPressed: () => controller.addRandomSpeedingEvent(userId),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                    ),
-                    child: const Text('Add Random Event'),
-                  ),*/
                 ],
               ),
             ),
-            // Display Selected Dates
 
             // Data Table
             Expanded(
               child: controller.isLoading.value
                   ? const Center(child: CircularProgressIndicator())
                   : controller.speedingEvents.isEmpty
-                      ? const Center(child: Text('No speeding events found.'))
+                      ? const Center(
+                          child: Text(
+                            'No speeding events found',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
                       : SingleChildScrollView(
                           scrollDirection: Axis.vertical,
                           physics: const BouncingScrollPhysics(),
@@ -108,60 +128,49 @@ class ActivityPage extends StatelessWidget {
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: DataTable(
-                                columnSpacing: 2.0,
+                                columnSpacing: 16.0,
                                 dataRowHeight: 48.0,
+                                headingTextStyle: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                                 columns: const [
+                                  DataColumn(label: Text('Date', maxLines: 1)),
                                   DataColumn(
-                                      label: SizedBox(
-                                          width: 120, child: Text('Date'))),
+                                      label: Text('Position', maxLines: 1)),
+                                  DataColumn(label: Text('Speed', maxLines: 1)),
+                                  DataColumn(label: Text('Limit', maxLines: 1)),
                                   DataColumn(
-                                      label: SizedBox(
-                                          width: 80, child: Text('Position'))),
+                                      label: Text('Duration', maxLines: 1)),
                                   DataColumn(
-                                      label: SizedBox(
-                                          width: 60, child: Text('Speed'))),
-                                  DataColumn(
-                                      label: SizedBox(
-                                          width: 60, child: Text('Limit'))),
-                                  DataColumn(
-                                      label: SizedBox(
-                                          width: 70, child: Text('Duration'))),
-                                  DataColumn(
-                                      label: SizedBox(
-                                          width: 60, child: Text('Action'))),
+                                      label: Text('Action', maxLines: 1)),
                                 ],
                                 rows: controller.speedingEvents.map((event) {
-                                  return DataRow(cells: [
-                                    DataCell(SizedBox(
-                                        width: 110,
-                                        child: Text(event['eventDateTime']
-                                            .toString()))),
-                                    DataCell(SizedBox(
-                                        width: 80,
-                                        child: Text(_formatPosition(
-                                            event['position'])))),
-                                    DataCell(SizedBox(
-                                        width: 60,
-                                        child: Text(event['driverSpeed']
-                                            .toStringAsFixed(1)))),
-                                    DataCell(SizedBox(
-                                        width: 60,
-                                        child: Text(event['roadSpeedLimit']
-                                            .toStringAsFixed(1)))),
-                                    DataCell(SizedBox(
-                                        width: 60,
-                                        child: Text("${event['duration']} s"))),
-                                    DataCell(SizedBox(
-                                      width: 60,
-                                      child: IconButton(
-                                        icon:
-                                            const Icon(Icons.delete, size: 20),
-                                        onPressed: () =>
-                                            controller.deleteSpeedingEvent(
-                                                event['eventId']),
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(Text(
+                                        DateFormat('MMM d, HH:mm').format(
+                                            DateTime.parse(
+                                                event['eventDateTime'])),
+                                      )),
+                                      DataCell(Text(
+                                          _formatPosition(event['position']))),
+                                      DataCell(Text(event['driverSpeed']
+                                          .toStringAsFixed(1))),
+                                      DataCell(Text(event['roadSpeedLimit']
+                                          .toStringAsFixed(1))),
+                                      DataCell(Text("${event['duration']} s")),
+                                      DataCell(
+                                        IconButton(
+                                          icon: const Icon(Icons.delete,
+                                              size: 20, color: Colors.red),
+                                          onPressed: () =>
+                                              controller.deleteSpeedingEvent(
+                                                  event['eventId']),
+                                        ),
                                       ),
-                                    )),
-                                  ]);
+                                    ],
+                                  );
                                 }).toList(),
                               ),
                             ),
