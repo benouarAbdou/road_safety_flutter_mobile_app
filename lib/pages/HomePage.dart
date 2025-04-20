@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
+import 'dart:developer' as dev;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +27,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool simulate = false; // ⛔ Change à false pour désactiver
   final AudioPlayer audioPlayer = AudioPlayer();
   StreamSubscription<Position>? _positionStream;
   late GoogleMapController _mapController;
@@ -128,6 +131,12 @@ class _MyHomePageState extends State<MyHomePage> {
       _speed = _speed < 5 ? 0 : _speed;
       speedLimit = limit ?? 0;
 
+      // ✅ Mode simulation activable
+      if (simulate) {
+        _speed = 85; // vitesse simulée
+        speedLimit = 30; // limite simulée
+      }
+
       if (_firebaseController.isDriving.value &&
           _speed > speedLimit &&
           speedLimit != 0) {
@@ -216,6 +225,12 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(onPressed: () {
+        setState(() {
+          dev.log("simulate = $simulate");
+          simulate = !simulate;
+        });
+      }),
       body: Stack(
         children: [
           GoogleMap(
