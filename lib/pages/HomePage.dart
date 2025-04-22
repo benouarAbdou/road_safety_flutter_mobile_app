@@ -231,12 +231,12 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(onPressed: () {
+      /*floatingActionButton: FloatingActionButton(onPressed: () {
         setState(() {
           simulate = !simulate;
           dev.log("simulate = $simulate");
         });
-      }),
+      }),*/
       body: Stack(
         children: [
           GoogleMap(

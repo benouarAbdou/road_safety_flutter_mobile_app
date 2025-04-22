@@ -39,6 +39,32 @@ class ActivityPage extends StatelessWidget {
     }
   }
 
+  void _showDeleteConfirmation(BuildContext context, int eventId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: const Text(
+              'Are you sure you want to delete this speeding event?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // Cancel
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                controller.deleteSpeedingEvent(eventId); // Proceed with delete
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildDateChip(
       DateTime? date, VoidCallback onTap, VoidCallback onClear, String label) {
     return GestureDetector(
@@ -165,8 +191,8 @@ class ActivityPage extends StatelessWidget {
                                           icon: const Icon(Icons.delete,
                                               size: 20, color: Colors.red),
                                           onPressed: () =>
-                                              controller.deleteSpeedingEvent(
-                                                  event['eventId']),
+                                              _showDeleteConfirmation(
+                                                  context, event['eventId']),
                                         ),
                                       ),
                                     ],
