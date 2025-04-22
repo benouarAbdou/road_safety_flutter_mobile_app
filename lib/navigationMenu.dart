@@ -44,7 +44,7 @@ class NavigationMenu extends StatelessWidget {
           onPressed: () {
             Get.to(() => ActivityPage(userId: userId));
           },
-          icon: const Icon(Iconsax.activity),
+          icon: const Icon(Iconsax.profile_circle),
         ),
         title: const Text("Car Speed Tracker"),
         elevation: 0,

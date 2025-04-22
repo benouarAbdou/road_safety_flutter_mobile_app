@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class FirebaseController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  var isDriving = true.obs; // Reactive variable to track isDriving state
+  var isDriving = true.obs;
   var isLoadingIsDriving = true.obs;
+  var isLoadingDriverInfo = true.obs;
+  var driverInfo = {}.obs;
+  var vehicleInfo = {}.obs;
 
   Future<void> fetchIsDriving(String userId) async {
     try {
@@ -23,21 +26,20 @@ class FirebaseController extends GetxController {
         bool currentIsDriving =
             driverQuery.docs.first.get('isDriving') ?? false;
         isDriving.value = currentIsDriving;
-        debugPrint('Fetched isDriving: ${isDriving.value}');
+        log('Fetched isDriving: ${isDriving.value}');
       } else {
-        debugPrint('No driver found with authId: $userId');
-        isDriving.value = false; // Default to false if no driver document
+        log('No driver found with authId: $userId');
+        isDriving.value = false;
       }
 
       isLoadingIsDriving.value = false;
     } catch (e) {
-      debugPrint('Error fetching isDriving: $e');
-      isDriving.value = false; // Default to false on error
+      log('Error fetching isDriving: $e');
+      isDriving.value = false;
       isLoadingIsDriving.value = false;
     }
   }
 
-  // Update user position and speed in Firestore using the user's document ID
   Future<void> updateUserPositionAndSpeed({
     required String userId,
     required LatLng position,
@@ -65,16 +67,14 @@ class FirebaseController extends GetxController {
     }
   }
 
-  // Add an event tied to the driver's document ID
   Future<void> addEvent({
     required String driverId,
     required String position,
     required double driverSpeed,
     required double roadSpeedLimit,
-    required int duration, // Add duration parameter
+    required int duration,
   }) async {
     try {
-      // Get the driver document to fetch vehicleId
       DocumentSnapshot driverDoc =
           await _firestore.collection('drivers').doc(driverId).get();
       String? vehicleId = driverDoc.get('vehicleId');
@@ -86,8 +86,8 @@ class FirebaseController extends GetxController {
         'driverSpeed': driverSpeed,
         'roadSpeedLimit': roadSpeedLimit,
         'eventDateTime': eventDateTime.toIso8601String(),
-        'duration': duration, // Include duration in event data
-        'vehicleId': vehicleId, // Add vehicleId to event data
+        'duration': duration,
+        'vehicleId': vehicleId,
       };
 
       DocumentReference docRef =
@@ -100,7 +100,6 @@ class FirebaseController extends GetxController {
     }
   }
 
-  // Helper method to get driver document ID from authId
   Future<String?> getDriverDocId(String authId) async {
     try {
       QuerySnapshot driverQuery = await _firestore
@@ -115,7 +114,6 @@ class FirebaseController extends GetxController {
     }
   }
 
-  // Toggle isDriving field in Firestore and update local state
   Future<void> toggleIsDriving(String userId) async {
     try {
       QuerySnapshot driverQuery = await _firestore
@@ -138,6 +136,102 @@ class FirebaseController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error toggling isDriving: $e');
+    }
+  }
+
+  Future<void> fetchDriverAndVehicleInfo(String userId) async {
+    log('Starting fetchDriverAndVehicleInfo for userId: $userId');
+    try {
+      isLoadingDriverInfo.value = true;
+
+      // Fetch driver info with timeout
+      log('Fetching driver info for authId: $userId');
+      QuerySnapshot driverQuery = await _firestore
+          .collection('drivers')
+          .where('authId', isEqualTo: userId)
+          .limit(1)
+          .get()
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        log('Driver query timed out for userId: $userId');
+        throw TimeoutException('Driver query timed out');
+      });
+
+      if (driverQuery.docs.isNotEmpty) {
+        log('Driver found for userId: $userId');
+        var driverData = driverQuery.docs.first.data() as Map<String, dynamic>;
+        driverInfo.value = {
+          'fullName': driverData['fullName'] ?? 'N/A',
+          'phoneNumber': driverData['phoneNumber'] ?? 'N/A',
+          'address': driverData['address'] ?? 'N/A',
+          'vehicleId': driverData['vehicleId'] ?? '',
+        };
+
+        // Fetch vehicle info if vehicleId exists
+        String? vehicleId = driverData['vehicleId'];
+        if (vehicleId != null && vehicleId.isNotEmpty) {
+          log('Fetching vehicle info for vehicleId: $vehicleId');
+          DocumentSnapshot vehicleDoc = await _firestore
+              .collection('vehicles')
+              .doc(vehicleId)
+              .get()
+              .timeout(const Duration(seconds: 10), onTimeout: () {
+            log('Vehicle query timed out for vehicleId: $vehicleId');
+            throw TimeoutException('Vehicle query timed out');
+          });
+          if (vehicleDoc.exists) {
+            var vehicleData = vehicleDoc.data() as Map<String, dynamic>;
+            vehicleInfo.value = {
+              'model': vehicleData['model'] ?? 'N/A',
+              'registration': vehicleData['registration'] ?? 'N/A',
+              'type': vehicleData['type'] ?? 'N/A',
+            };
+          } else {
+            log('No vehicle found for vehicleId: $vehicleId');
+            vehicleInfo.value = {
+              'model': 'N/A',
+              'registration': 'N/A',
+              'type': 'N/A',
+            };
+          }
+        } else {
+          log('No vehicleId found for driver');
+          vehicleInfo.value = {
+            'model': 'N/A',
+            'registration': 'N/A',
+            'type': 'N/A',
+          };
+        }
+      } else {
+        log('No driver found for authId: $userId');
+        driverInfo.value = {
+          'fullName': 'N/A',
+          'phoneNumber': 'N/A',
+          'address': 'N/A',
+          'vehicleId': '',
+        };
+        vehicleInfo.value = {
+          'model': 'N/A',
+          'registration': 'N/A',
+          'type': 'N/A',
+        };
+      }
+
+      isLoadingDriverInfo.value = false;
+      log('fetchDriverAndVehicleInfo completed successfully');
+    } catch (e) {
+      log('Error in fetchDriverAndVehicleInfo: $e');
+      driverInfo.value = {
+        'fullName': 'N/A',
+        'phoneNumber': 'N/A',
+        'address': 'N/A',
+        'vehicleId': '',
+      };
+      vehicleInfo.value = {
+        'model': 'N/A',
+        'registration': 'N/A',
+        'type': 'N/A',
+      };
+      isLoadingDriverInfo.value = false;
     }
   }
 }

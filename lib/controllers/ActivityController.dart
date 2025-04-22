@@ -8,9 +8,9 @@ class ActivityController extends GetxController {
   final RxList<Map<String, dynamic>> speedingEvents =
       <Map<String, dynamic>>[].obs;
   final RxBool isLoading = true.obs;
-
-  DateTime? startDate;
-  DateTime? endDate;
+  final Rx<DateTime?> startDate = Rx<DateTime?>(null);
+  final Rx<DateTime?> endDate = Rx<DateTime?>(null);
+  final RxBool showDriverInfo = false.obs;
   final Random _random = Random();
 
   @override
@@ -21,17 +21,18 @@ class ActivityController extends GetxController {
 
   Future<void> loadSpeedingEvents() async {
     try {
+      isLoading.value = true;
       String query = "SELECT * FROM speeding_event";
-      if (startDate != null || endDate != null) {
+      if (startDate.value != null || endDate.value != null) {
         query += " WHERE";
-        if (startDate != null) {
-          query += " eventDateTime >= '${startDate!.toIso8601String()}'";
+        if (startDate.value != null) {
+          query += " eventDateTime >= '${startDate.value!.toIso8601String()}'";
         }
-        if (startDate != null && endDate != null) {
+        if (startDate.value != null && endDate.value != null) {
           query += " AND";
         }
-        if (endDate != null) {
-          query += " eventDateTime <= '${endDate!.toIso8601String()}'";
+        if (endDate.value != null) {
+          query += " eventDateTime <= '${endDate.value!.toIso8601String()}'";
         }
       }
 
@@ -49,18 +50,18 @@ class ActivityController extends GetxController {
   }
 
   void clearFilters() {
-    startDate = null;
-    endDate = null;
+    startDate.value = null;
+    endDate.value = null;
     loadSpeedingEvents();
   }
 
   Future<void> setStartDate(DateTime? date) async {
-    startDate = date;
+    startDate.value = date;
     await loadSpeedingEvents();
   }
 
   Future<void> setEndDate(DateTime? date) async {
-    endDate = date;
+    endDate.value = date;
     await loadSpeedingEvents();
   }
 
@@ -115,5 +116,9 @@ class ActivityController extends GetxController {
     } catch (e) {
       dev.log('Error adding random event', error: e);
     }
+  }
+
+  void toggleView(bool showInfo) {
+    showDriverInfo.value = showInfo;
   }
 }
