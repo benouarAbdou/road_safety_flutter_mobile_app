@@ -27,6 +27,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   bool simulate = false; // ⛔ Change à false pour désactiver
+  double _initialSpeedingSpeed = 99; // To store the speed when speeding starts
+  int _initialSpeedingLimit = 99;
   final AudioPlayer audioPlayer = AudioPlayer();
   StreamSubscription<Position>? _positionStream;
   late GoogleMapController _mapController;
@@ -143,6 +145,9 @@ class _MyHomePageState extends State<MyHomePage> {
           // Start of a new speeding event
           _isSpeeding = true;
           _speedingStartTime = DateTime.now();
+          _initialSpeedingSpeed =
+              _speed; // Ensure this captures the current speed (85 in simulation)
+          _initialSpeedingLimit = speedLimit;
           ToastHelper.showWarningToast(
             context,
             'Slow down! Speed limit: $speedLimit km/h',
@@ -150,7 +155,7 @@ class _MyHomePageState extends State<MyHomePage> {
           audioPlayer.play(AssetSource('sounds/alert.mp3'));
         }
       } else if (_isSpeeding) {
-        // End of speeding event (driver slowed down or conditions no longer met)
+        // End of speeding event
         _isSpeeding = false;
         if (_speedingStartTime != null) {
           final duration =
@@ -161,30 +166,32 @@ class _MyHomePageState extends State<MyHomePage> {
               _firebaseController.addEvent(
                 driverId: driverDocId,
                 position: '${position.latitude},${position.longitude}',
-                driverSpeed: _speed,
-                roadSpeedLimit: speedLimit.toDouble(),
+                driverSpeed:
+                    _initialSpeedingSpeed, // Should now be 85 in simulation
+                roadSpeedLimit: _initialSpeedingLimit.toDouble(),
                 duration: duration,
               );
               // Store speeding event in local SQLite database
               _sqlDb.insertData('''
-                INSERT INTO speeding_event (driverId, position, driverSpeed, roadSpeedLimit, eventDateTime, duration)
-                VALUES (
-                  '$driverDocId',
-                  '${position.latitude},${position.longitude}',
-                  $_speed,
-                  ${speedLimit.toDouble()},
-                  '${DateTime.now().toIso8601String()}',
-                  $duration
-                )
-              ''').then((value) {
-                debugPrint('Speeding event stored locally with ID: $value');
+              INSERT INTO speeding_event (driverId, position, driverSpeed, roadSpeedLimit, eventDateTime, duration)
+              VALUES (
+                '$driverDocId',
+                '${position.latitude},${position.longitude}',
+                $_initialSpeedingSpeed,
+                ${_initialSpeedingLimit.toDouble()},
+                '${DateTime.now().toIso8601String()}',
+                $duration
+              )
+            ''').then((value) {
+                dev.log('Speeding event stored locally with ID: $value');
               }).catchError((error) {
-                debugPrint('Error storing speeding event locally: $error');
+                dev.log('Error storing speeding event locally: $error');
               });
             }
           });
         }
         _speedingStartTime = null;
+        // No need to reset _initialSpeedingSpeed here; it will be overwritten when a new speeding event starts
       }
 
       _userMarker = Marker(
@@ -226,8 +233,8 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(onPressed: () {
         setState(() {
-          dev.log("simulate = $simulate");
           simulate = !simulate;
+          dev.log("simulate = $simulate");
         });
       }),
       body: Stack(
