@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -72,6 +74,11 @@ class FirebaseController extends GetxController {
     required int duration, // Add duration parameter
   }) async {
     try {
+      // Get the driver document to fetch vehicleId
+      DocumentSnapshot driverDoc =
+          await _firestore.collection('drivers').doc(driverId).get();
+      String? vehicleId = driverDoc.get('vehicleId');
+
       final eventDateTime = DateTime.now();
       final eventData = {
         'driverId': driverId,
@@ -80,11 +87,14 @@ class FirebaseController extends GetxController {
         'roadSpeedLimit': roadSpeedLimit,
         'eventDateTime': eventDateTime.toIso8601String(),
         'duration': duration, // Include duration in event data
+        'vehicleId': vehicleId, // Add vehicleId to event data
       };
 
-      await _firestore.collection('events').add(eventData);
+      DocumentReference docRef =
+          await _firestore.collection('events').add(eventData);
+      log('Event added successfully with ID: ${docRef.id}');
       debugPrint(
-          'Event added successfully for driverDocId: $driverId with duration: $duration seconds');
+          'Event added successfully for driverDocId: $driverId with duration: $duration seconds and vehicleId: $vehicleId');
     } catch (e) {
       debugPrint('Error adding event: $e');
     }
