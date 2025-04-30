@@ -45,6 +45,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool _isSpeeding = false; // Track if driver is currently speeding
   DateTime? _speedingStartTime; // Track when speeding started
+  bool _hasExceededLimit =
+      false; // Track if driver exceeded limit during journey
+  DateTime? _journeyStartTime; // Track when driving started
 
   @override
   void initState() {
@@ -144,9 +147,9 @@ class _MyHomePageState extends State<MyHomePage> {
         if (!_isSpeeding) {
           // Start of a new speeding event
           _isSpeeding = true;
+          _hasExceededLimit = true; // Mark that driver exceeded limit
           _speedingStartTime = DateTime.now();
-          _initialSpeedingSpeed =
-              _speed; // Ensure this captures the current speed (85 in simulation)
+          _initialSpeedingSpeed = _speed;
           _initialSpeedingLimit = speedLimit;
           ToastHelper.showWarningToast(
             context,
@@ -166,8 +169,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _firebaseController.addEvent(
                 driverId: driverDocId,
                 position: '${position.latitude},${position.longitude}',
-                driverSpeed:
-                    _initialSpeedingSpeed, // Should now be 85 in simulation
+                driverSpeed: _initialSpeedingSpeed,
                 roadSpeedLimit: _initialSpeedingLimit.toDouble(),
                 duration: duration,
               );
@@ -191,7 +193,6 @@ class _MyHomePageState extends State<MyHomePage> {
           });
         }
         _speedingStartTime = null;
-        // No need to reset _initialSpeedingSpeed here; it will be overwritten when a new speeding event starts
       }
 
       _userMarker = Marker(
@@ -222,6 +223,34 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  // Modified to handle journey start/end and logging
+  void _toggleDriving() {
+    _firebaseController.toggleIsDriving(widget.userId).then((_) {
+      if (_firebaseController.isDriving.value) {
+        // Journey started
+        _journeyStartTime = DateTime.now();
+        _hasExceededLimit = false;
+      } else {
+        // Journey ended
+        if (!_hasExceededLimit && _journeyStartTime != null) {
+          _firebaseController.getDriverDocId(widget.userId).then((driverDocId) {
+            if (driverDocId != null) {
+              // Log journey without speeding
+              _firebaseController.addEvent(
+                driverId: driverDocId,
+                position: '0,0',
+                driverSpeed: 0,
+                roadSpeedLimit: 0,
+                duration: 0,
+              );
+            }
+          });
+        }
+        _journeyStartTime = null;
+      }
+    });
+  }
+
   @override
   void dispose() {
     _positionStream?.cancel();
@@ -231,12 +260,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      /*floatingActionButton: FloatingActionButton(onPressed: () {
-        setState(() {
-          simulate = !simulate;
-          dev.log("simulate = $simulate");
-        });
-      }),*/
       body: Stack(
         children: [
           GoogleMap(
@@ -296,8 +319,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       size: 40,
                     ),
                     onPressed: !_firebaseController.isLoadingIsDriving.value
-                        ? () =>
-                            _firebaseController.toggleIsDriving(widget.userId)
+                        ? _toggleDriving
                         : null,
                   ),
                 )),
